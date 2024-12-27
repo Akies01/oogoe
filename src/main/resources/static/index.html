@@ -36,6 +36,22 @@
                             <label for="message" class="form-label">メッセージ</label>
                             <input type="text" id="message" class="form-control" placeholder="メッセージを入力してください" required>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">通知方法</label>
+                            <div>
+                                <button type="button" class="btn btn-outline-primary" onclick="selectAlarmMode('screen')">画面</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="selectAlarmMode('sound')">音声</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="selectAlarmMode('email')">メール</button>
+                            </div>
+                        </div>
+                        <div class="mb-3" id="alarm-email-container" style="display:none;">
+                            <label for="alarm-email" class="form-label">メールアドレス</label>
+                            <input type="email" id="alarm-email" class="form-control" placeholder="メールアドレスを入力してください">
+                        </div>
+                        <div class="mb-3" id="alarm-file-container" style="display:none;">
+                            <label for="alarm-file" class="form-label">音声ファイル</label>
+                            <input type="file" id="alarm-file" class="form-control" accept="audio/*">
+                        </div>
                         <button type="button" class="btn btn-primary w-100" onclick="addAlarm()">追加</button>
                     </form>
                 </div>
@@ -64,14 +80,82 @@
                             <label for="timer-message" class="form-label">メッセージ</label>
                             <input type="text" id="timer-message" class="form-control" placeholder="メッセージを入力してください" required>
                         </div>
-                        <button type="button" class="btn btn-secondary w-100" onclick="addTimer()">タイマー追加</button>
+                        <div class="mb-3">
+                            <label class="form-label">通知方法</label>
+                            <div>
+                                <button type="button" class="btn btn-outline-primary" onclick="selectTimerMode('screen')">画面</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="selectTimerMode('sound')">音声</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="selectTimerMode('email')">メール</button>
+                            </div>
+                        </div>
+                        <div class="mb-3" id="timer-email-container" style="display:none;">
+                            <label for="timer-email" class="form-label">メールアドレス</label>
+                            <input type="email" id="timer-email" class="form-control" placeholder="メールアドレスを入力してください">
+                        </div>
+                        <div class="mb-3" id="timer-file-container" style="display:none;">
+                            <label for="timer-file" class="form-label">音声ファイル</label>
+                            <input type="file" id="timer-file" class="form-control" accept="audio/*">
+                        </div>
+                        <button type="button" class="btn btn-secondary w-100" onclick="addTimer()">追加</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
+    <script type="module" src="/alarm.js"></script>
+    <script type="module" src="/timer.js"></script>
+    <script type="module">
+        import { addAlarm, fetchAlarms, deleteAlarm, checkAlarms, showAddAlarmModal } from './alarm.js';
+        import { addTimer, fetchTimers, deleteTimer, checkTimers, showAddTimerModal } from './timer.js';
+
+        window.onload = () => {
+            fetchAlarms();
+            fetchTimers();
+            setInterval(() => {
+                checkTimers();
+                checkAlarms();
+            }, 1000);
+        };
+
+        window.addAlarm = addAlarm;
+        window.fetchAlarms = fetchAlarms;
+        window.deleteAlarm = deleteAlarm;
+        window.checkAlarms = checkAlarms;
+        window.showAddAlarmModal = showAddAlarmModal;
+
+        window.addTimer = addTimer;
+        window.fetchTimers = fetchTimers;
+        window.deleteTimer = deleteTimer;
+        window.checkTimers = checkTimers;
+        window.showAddTimerModal = showAddTimerModal;
+
+        window.selectAlarmMode = selectAlarmMode;
+        window.selectTimerMode = selectTimerMode;
+
+        function selectAlarmMode(mode) {
+            document.getElementById('alarm-file-container').style.display = (mode === 'sound') ? 'block' : 'none';
+            document.getElementById('alarm-email-container').style.display = (mode === 'email') ? 'block' : 'none';
+            document.querySelectorAll('#addAlarmForm .btn').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+            document.querySelector(`[onclick="selectAlarmMode('${mode}')"]`).classList.add('btn-primary');
+        }
+
+        function selectTimerMode(mode) {
+            document.getElementById('timer-file-container').style.display = (mode === 'sound') ? 'block' : 'none';
+            document.getElementById('timer-email-container').style.display = (mode === 'email') ? 'block' : 'none';
+            document.querySelectorAll('#addTimerForm .btn').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+            document.querySelector(`[onclick="selectTimerMode('${mode}')"]`).classList.add('btn-primary');
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
 </body>
 </html>

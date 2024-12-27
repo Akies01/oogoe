@@ -1,83 +1,20 @@
-const addAlarmModal = new bootstrap.Modal(document.getElementById('addAlarmModal'));
+import { notify } from './notifier.js';
+
 const addTimerModal = new bootstrap.Modal(document.getElementById('addTimerModal'));
 
 let timers = [];
 
-function addAlarm() {
-    const time = document.getElementById('time').value;
-    const message = document.getElementById('message').value;
-    const addButton = document.querySelector('#addAlarmForm button');
-
-    if (!time || !message) {
-        alert('時間とメッセージを両方入力してください！');
-        return;
-    }
-
-    addButton.disabled = true;
-
-    const alarms = JSON.parse(localStorage.getItem('alarms')) || [];
-    alarms.push({ time, message, triggered: false });
-    localStorage.setItem('alarms', JSON.stringify(alarms));
-    addAlarmModal.hide();
-    fetchAlarms();
-
-    setTimeout(() => (addButton.disabled = false), 500);
-}
-
-function fetchAlarms() {
-    const alarms = JSON.parse(localStorage.getItem('alarms')) || [];
-    const alarmContainer = document.getElementById('alarm-container');
-    alarmContainer.innerHTML = '';
-
-    alarms.forEach((alarm, index) => {
-        const alarmCard = document.createElement('div');
-        alarmCard.className = 'card my-2';
-
-        alarmCard.innerHTML = `
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title">${alarm.time}</h5>
-                    <p class="card-text">${alarm.message}</p>
-                </div>
-                <button class="btn btn-danger" onclick="deleteAlarm(${index})">削除</button>
-            </div>
-        `;
-
-        alarmContainer.appendChild(alarmCard);
-    });
-}
-
-function deleteAlarm(index) {
-    const alarms = JSON.parse(localStorage.getItem('alarms')) || [];
-    alarms.splice(index, 1);
-
-    if (alarms.length === 0) {
-        localStorage.removeItem('alarms'); // 키값 제거
-    } else {
-        localStorage.setItem('alarms', JSON.stringify(alarms));
-    }
-
-    fetchAlarms();
-}
-
-function showAddAlarmModal() {
-    document.getElementById('addAlarmForm').reset();
-    addAlarmModal.show();
-}
-
-function showAddTimerModal() {
-    document.getElementById('addTimerForm').reset();
-    addTimerModal.show();
-}
-
-function addTimer() {
+export function addTimer() {
     const minutes = parseInt(document.getElementById('timer-minutes').value, 10) || 0;
     const seconds = parseInt(document.getElementById('timer-seconds').value, 10) || 0;
     const message = document.getElementById('timer-message').value;
+    const mode = document.querySelector('#addTimerForm .btn-primary').getAttribute('onclick').match(/'([^']+)'/)[1];
+    const email = document.getElementById('timer-email').value;
+    const fileInput = document.getElementById('timer-file');
     const addButton = document.querySelector('#addTimerForm button');
 
-    if (minutes < 0 || seconds < 0 || (minutes === 0 && seconds === 0) || !message) {
-        alert('有効な分と秒、メッセージを入力してください！');
+    if (minutes < 0 || seconds < 0 || (minutes === 0 && seconds === 0) || !message || (mode === 'email' && !email) || (mode === 'sound' && !fileInput.files.length)) {
+        notify('有効な分と秒、メッセージ、メールアドレス（Eメールモードの場合）、音声ファイル（サウンドモードの場合）を入力してください！');
         return;
     }
 
@@ -86,7 +23,7 @@ function addTimer() {
     const timerId = `timer-${Date.now()}`;
     const timerEndTime = Date.now() + (minutes * 60 + seconds) * 1000;
 
-    const timerData = { id: timerId, endTime: timerEndTime, message, finished: false };
+    const timerData = { id: timerId, endTime: timerEndTime, message, mode, email, finished: false };
     timers.push(timerData);
 
     const storedTimers = JSON.parse(localStorage.getItem('timers')) || [];
@@ -96,10 +33,40 @@ function addTimer() {
     addTimerModal.hide();
     fetchTimers();
 
+    if (mode === 'sound') {
+        uploadAndCacheAudio(fileInput.files[0]);
+    }
+
     setTimeout(() => (addButton.disabled = false), 500);
 }
 
-function fetchTimers() {
+function uploadAndCacheAudio(file) {
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        const arrayBuffer = event.target.result;
+        const response = new Response(arrayBuffer);
+        const cache = await caches.open('audio-cache');
+        await cache.put('/audio-file', response);
+        alert('Audio file cached');
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+async function loadAndPlayAudio() {
+    const cache = await caches.open('audio-cache');
+    const cachedResponse = await cache.match('/audio-file');
+    if (cachedResponse) {
+        const audioPlayer = document.getElementById('audioPlayer');
+        const blob = await cachedResponse.blob();
+        const url = URL.createObjectURL(blob);
+        audioPlayer.src = url;
+        audioPlayer.play();
+    } else {
+        alert('No audio file in cache');
+    }
+}
+
+export function fetchTimers() {
     timers = JSON.parse(localStorage.getItem('timers')) || [];
     const timerContainer = document.getElementById('timer-container');
     timerContainer.innerHTML = '';
@@ -123,7 +90,7 @@ function fetchTimers() {
     });
 }
 
-function formatRemainingTime(endTime, finished) {
+export function formatRemainingTime(endTime, finished) {
     if (finished) {
         return "00:00";
     }
@@ -133,10 +100,10 @@ function formatRemainingTime(endTime, finished) {
     return `${minutes}:${seconds}`;
 }
 
-function checkTimers() {
+export function checkTimers() {
     timers.forEach((timer) => {
         if (!timer.finished && Date.now() >= timer.endTime) {
-            alert(`タイマー終了: ${timer.message}`);
+            notify(`タイマー終了: ${timer.message}`, timer.mode, timer.email);
             timer.finished = true;
 
             const storedTimers = JSON.parse(localStorage.getItem('timers')) || [];
@@ -150,13 +117,13 @@ function checkTimers() {
     });
 }
 
-function deleteTimer(id) {
+export function deleteTimer(id) {
     timers = timers.filter((timer) => timer.id !== id);
     const storedTimers = JSON.parse(localStorage.getItem('timers')) || [];
     const updatedTimers = storedTimers.filter((timer) => timer.id !== id);
 
     if (updatedTimers.length === 0) {
-        localStorage.removeItem('timers'); // 키값 제거
+        localStorage.removeItem('timers'); 
     } else {
         localStorage.setItem('timers', JSON.stringify(updatedTimers));
     }
@@ -164,8 +131,18 @@ function deleteTimer(id) {
     document.getElementById(id)?.remove();
 }
 
-window.onload = () => {
-    fetchAlarms();
-    fetchTimers();
-    setInterval(checkTimers, 1000);
-};
+export function showAddTimerModal() {
+    document.getElementById('addTimerForm').reset();
+    addTimerModal.show();
+}
+
+function selectTimerMode(mode) {
+    document.getElementById('timer-file-container').style.display = (mode === 'sound') ? 'block' : 'none';
+    document.getElementById('timer-email-container').style.display = (mode === 'email') ? 'block' : 'none';
+    document.querySelectorAll('#addTimerForm .btn').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-outline-secondary');
+    });
+    document.querySelector(`[onclick="selectTimerMode('${mode}')"]`).classList.add('btn-primary');
+}

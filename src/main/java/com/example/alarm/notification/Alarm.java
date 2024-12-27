@@ -3,10 +3,12 @@ package com.example.alarm.notification;
 public class Alarm {
     private String time;
     private String message;
+    private String email;
 
-    public Alarm(String time, String message) {
+    public Alarm(String time, String message, String email) {
         this.time = time;
         this.message = message;
+        this.email = email;
     }
 
     public Alarm() {}
@@ -25,5 +27,13 @@ public class Alarm {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }
